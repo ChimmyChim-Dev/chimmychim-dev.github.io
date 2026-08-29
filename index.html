@@ -124,18 +124,6 @@
   .section-title .bar { width: 4px; height: 18px; border-radius: 0; background: var(--mint); }
   .muted { color: var(--muted); }
 
-  /* ===== Update cards ===== */
-  .updates { display: grid; gap: 14px; }
-  .update {
-    background: var(--surface); border: 1px solid var(--border);
-    border-left: 3px solid var(--mint); border-radius: 0;
-    padding: 18px 20px; box-shadow: var(--shadow);
-  }
-  .update .date { font-size: 12px; font-weight: 600; color: var(--mint); text-transform: uppercase; letter-spacing: .6px; }
-  .update h3 { margin: 6px 0 8px; font-size: 19px; }
-  .update p { margin: 0 0 12px; line-height: 1.55; color: #d4dae3; }
-  .update a.more { font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--mint); padding-bottom: 1px; }
-  .update a.more:hover { color: #fff; border-color: #fff; }
 
   /* ===== Generic list (reddit) ===== */
   .list { display: grid; gap: 10px; }
@@ -197,7 +185,17 @@
   .bsky-post .meta b { color: var(--text); }
   .bsky-post .txt { line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
   /* ===== News (folder-driven) ===== */
-  .news-post { display:flex; gap:16px; background:var(--surface); border:1px solid var(--border); padding:16px; margin-bottom:16px; }
+  .news-post { position:relative; display:flex; gap:16px; background:var(--surface); border:1px solid var(--border); padding:16px; margin-bottom:16px; }
+  .news-post.is-new { border-color:var(--mint); box-shadow:0 0 0 1px var(--mint), 0 0 18px rgba(0,255,133,.22); }
+  .new-badge { position:absolute; top:-1px; right:-1px; background:var(--mint); color:#04130b; font-size:11px; font-weight:800; letter-spacing:.8px; padding:3px 9px; border:1px solid #04130b; }
+  .news-banner { display:flex; gap:14px; align-items:center; background:linear-gradient(to bottom, rgba(150,160,170,0.22), rgba(150,160,170,0) 100%); border:1px solid var(--border); padding:10px 14px; margin-bottom:18px; text-decoration:none; color:inherit; cursor:pointer; animation:bannerIn 1s ease-out both; }
+  .news-banner:hover { border-color:var(--mint); }
+  @keyframes bannerIn { from { opacity:0; transform:translateY(-24px); } to { opacity:1; transform:translateY(0); } }
+  .banner-thumb { width:140px; height:84px; object-fit:cover; border:1px solid var(--border); flex:none; background:var(--surface-2); }
+  .banner-body { flex:1; min-width:0; }
+  .banner-body .date { font-size:11px; font-weight:600; color:var(--mint); text-transform:uppercase; letter-spacing:.6px; }
+  .banner-body h3 { margin:2px 0 0; font-size:18px; }
+  .banner-body p { margin:0; color:#d4dae3; line-height:1.5; }
   .news-thumb { width:210px; height:140px; object-fit:cover; border:1px solid var(--border); flex:none; background:var(--surface-2); }
   .news-body { flex:1; min-width:0; }
   .news-body .date { font-size:12px; font-weight:600; color:var(--mint); text-transform:uppercase; letter-spacing:.6px; }
@@ -222,6 +220,8 @@
   @media (max-width: 620px) {
     .news-post { flex-direction:column; }
     .news-thumb { width:100%; height:170px; }
+    .news-banner { flex-direction:column; align-items:stretch; }
+    .banner-thumb { width:100%; height:120px; }
   }
 </style>
 </head>
@@ -229,6 +229,8 @@
 <div class="bg-anim"><span></span><span></span><span></span></div>
 
 <div class="wrap">
+
+  <a class="news-banner" id="news-banner" style="display:none"></a>
 
   <!-- ===== Header ===== -->
   <header>
@@ -267,9 +269,6 @@
 
   <!-- ===== Tabs ===== -->
   <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="updates">
-      <svg viewBox="0 0 24 24"><path d="M4 5h16v2H4zM4 11h16v2H4zM4 17h10v2H4z"/></svg> Updates
-    </button>
     <button class="tab" data-tab="bluesky">
       <svg viewBox="0 0 24 24"><path d="M5.202 2.857C7.954 4.922 10.913 9.11 12 11.358c1.087-2.247 4.046-6.436 6.798-8.501C20.783 1.366 24 .213 24 3.883c0 .732-.42 6.156-.667 7.037-.856 3.061-3.978 3.842-6.755 3.37 4.854.826 6.089 3.562 3.422 6.299-5.065 5.196-7.28-1.304-7.847-2.97-.104-.305-.152-.448-.153-.327 0-.121-.05.022-.153.327-.568 1.666-2.782 8.166-7.847 2.97-2.667-2.737-1.432-5.473 3.422-6.3-2.777.473-5.899-.308-6.755-3.369C.42 10.04 0 4.615 0 3.883c0-3.67 3.217-2.517 5.202-1.026"/></svg> Bluesky
     </button>
@@ -279,16 +278,10 @@
     <button class="tab" data-tab="reddit">
        <svg viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg> Reddit
     </button>
-    <button class="tab" data-tab="news">
-       <svg viewBox="0 0 24 24"><path d="M3 5h14a1 1 0 0 1 1 1v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5zm2 3v7h12V8H5zm14 0v10h1V8h-1zm-9 1h5v2h-5V9zm0 4h5v2h-5v-2z"/></svg> News
+    <button class="tab active" data-tab="news">
+       <svg viewBox="0 0 24 24"><path d="M3 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4zm2 3v9h12V7H5zm14 0v11h1V7h-1zM8 9h6v2H8V9zm0 4h6v2H8v-2z"/></svg> News
     </button>
   </div>
-
-  <!-- ===== Updates panel ===== -->
-  <section class="panel active" id="updates">
-    <h2 class="section-title"><span class="bar"></span> Latest Updates</h2>
-    <div class="updates" id="updates-list"></div>
-  </section>
 
   <!-- ===== Bluesky panel ===== -->
   <section class="panel" id="bluesky">
@@ -336,7 +329,7 @@
        Optional "poster":"poster.svg" on a video gives it a thumbnail. To add a
        post: create news/<folder>/, drop in your files, add an entry to
        news/index.json. No HTML edits required.  -->
-  <section class="panel" id="news">
+  <section class="panel active" id="news">
     <h2 class="section-title"><span class="bar"></span> News</h2>
     <div class="loading" id="news-list">Loading news…</div>
   </section>
@@ -354,52 +347,9 @@
 </div>
 
 <script>
-  /* =========================================================
-     EDIT HERE to post a new update.
-     Copy a block and change the fields:
-       { date: "Aug 28, 2026", title: "...", text: "...", link: "", linkText: "" }
-     Leave link: "" if there is no link.
-     ========================================================= */
-  const updates = [
-    {
-      date: "Aug 28, 2026",
-      title: "New hub is live",
-      text: "I built this page so everything I post across Bluesky, YouTube, and Reddit lives in one easy spot. Check back often!",
-      link: "",
-      linkText: ""
-    },
-    {
-      date: "Aug 20, 2026",
-      title: "New video dropped",
-      text: "My latest YouTube upload is out — full walkthrough and behind-the-scenes. Would love your thoughts!",
-      link: "https://www.youtube.com/@ChimmyChimChannel",
-      linkText: "Watch on YouTube"
-    },
-    {
-      date: "Aug 12, 2026",
-      title: "AMA on Reddit",
-      text: "Doing an ask-me-anything over on Reddit this week. Drop your questions and I'll answer as many as I can!",
-      link: "https://www.reddit.com/user/ChimmyChimChannel/",
-      linkText: "Find me on Reddit"
-    }
-  ];
-
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
-
-  // ---- Render update cards ----
-  const uWrap = document.getElementById("updates-list");
-  updates.forEach(u => {
-    const el = document.createElement("article");
-    el.className = "update";
-    el.innerHTML =
-      '<div class="date">' + u.date + '</div>' +
-      '<h3>' + esc(u.title) + '</h3>' +
-      '<p>' + esc(u.text) + '</p>' +
-      (u.link ? '<a class="more" href="' + u.link + '" target="_blank" rel="noopener">' + (u.linkText || "Read more") + '</a>' : '');
-    uWrap.appendChild(el);
-  });
 
   // ---- YouTube: Full + Shorts categories, click to load into player ----
   // AUTO-UPDATE: paste a free YouTube Data API v3 key into YT_API_KEY below and
@@ -571,24 +521,57 @@
   function slideSrc(s) { return typeof s === "string" ? s : (s && s.src) || ""; }
   function slideType(s) { return typeof s === "string" ? "image" : ((s && s.type) || "image"); }
   function slidePoster(s) { return (s && s.poster) || ""; }
+  function isNew(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+    return Math.abs(Date.now() - d.getTime()) <= 5 * 86400000;
+  }
 
   function renderNews(posts) {
     const wrap = document.getElementById("news-list");
+    const banner = document.getElementById("news-banner");
     if (!posts || !posts.length) {
       wrap.className = "loading";
       wrap.textContent = "No news posts yet. Add one in the news/ folder (see news/index.json).";
+      banner.style.display = "none";
       return;
     }
     wrap.className = "";
     wrap.innerHTML = "";
+    posts = posts.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Featured banner (most recent post)
+    const feat = posts[0];
+    const fFolder = feat.folder;
+    const fItem = feat.thumbnail || (feat.slides && feat.slides[0]) || "";
+    const fType = fItem ? slideType(fItem) : "";
+    const fSrc = fItem ? newsResolver(fFolder, slideSrc(fItem)) : "";
+    const bannerMedia = fItem
+      ? (fType === "video"
+          ? '<video class="banner-thumb" muted playsinline preload="metadata" src="' + fSrc + '"></video>'
+          : '<img class="banner-thumb" src="' + fSrc + '" alt="">')
+      : "";
+    banner.innerHTML = bannerMedia +
+      '<div class="banner-body">' +
+        '<div class="date">' + esc(feat.date || "") + '</div>' +
+        '<h3>' + esc(feat.title || "") + '</h3>' +
+      '</div>';
+    banner.style.display = "";
+    banner.onclick = () => {
+      const t = document.querySelector('.tab[data-tab="news"]');
+      if (t) t.click();
+    };
+
     posts.forEach(post => {
       const folder = post.folder;
       const slides = (post.slides && post.slides.length) ? post.slides : (post.thumbnail ? [post.thumbnail] : []);
       const thumbItem = post.thumbnail || slides[0] || "";
       const thumbSrc = newsResolver(folder, slideSrc(thumbItem));
       const thumbIsVid = thumbItem && slideType(thumbItem) === "video";
+      const newPost = isNew(post.date);
       const art = document.createElement("article");
-      art.className = "news-post";
+      art.className = "news-post" + (newPost ? " is-new" : "");
+      art.id = "post-" + folder.replace(/[^A-Za-z0-9]/g, "_");
       const slidesHtml = slides.map((s, i) => {
         const src = newsResolver(folder, slideSrc(s));
         const isVid = slideType(s) === "video";
@@ -603,6 +586,7 @@
         ? '<video class="news-thumb" muted playsinline preload="metadata" src="' + thumbSrc + '"></video>'
         : '<img class="news-thumb" src="' + thumbSrc + '" alt="">';
       art.innerHTML =
+        (newPost ? '<span class="new-badge">NEW</span>' : "") +
         (thumbItem ? thumbMedia : "") +
         '<div class="news-body">' +
           '<div class="date">' + esc(post.date || "") + '</div>' +
@@ -669,3 +653,4 @@
 </script>
 </body>
 </html>
+
