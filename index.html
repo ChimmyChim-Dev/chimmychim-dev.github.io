@@ -491,17 +491,40 @@
   renderYouTube();
   refreshYouTube();
 
-  // ---- Tabs ----
+  // ---- Tabs (hash-driven for shareable deep links) ----
+  function activateTab(name) {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    const t = document.querySelector('.tab[data-tab="' + name + '"]');
+    if (t) t.classList.add("active");
+    const panel = document.getElementById(name);
+    if (panel) panel.classList.add("active");
+  }
   document.querySelectorAll(".tab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (btn.dataset.tab === "news") closeNewsDetail();
-      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(btn.dataset.tab).classList.add("active");
-    });
+    btn.addEventListener("click", () => { location.hash = btn.dataset.tab; });
   });
-  document.getElementById("news-back").addEventListener("click", closeNewsDetail);
+  document.getElementById("news-back").addEventListener("click", () => { location.hash = "news"; });
+
+  function onHashChange() {
+    const raw = (location.hash || "").replace(/^#/, "");
+    if (raw.startsWith("news/")) {
+      const id = decodeURIComponent(raw.slice(5));
+      activateTab("news");
+      const post = findPost(id);
+      if (post) {
+        openNewsDetail(post.folder);
+        document.getElementById("news").scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        closeNewsDetail();
+      }
+      return;
+    }
+    if (["bluesky", "youtube", "reddit", "news", "games"].indexOf(raw) !== -1) {
+      activateTab(raw);
+      if (raw === "news") closeNewsDetail();
+    }
+  }
+  window.addEventListener("hashchange", onHashChange);
 
   // ---- Live Bluesky feed ----
   (async () => {
@@ -566,6 +589,9 @@
 
   let newsPosts = [];
 
+  function postId(p) { return p.id || p.folder; }
+  function findPost(id) { return newsPosts.find(p => (p.id || p.folder) === id); }
+
   function renderNews(posts) {
     const wrap = document.getElementById("news-list");
     const banner = document.getElementById("news-banner");
@@ -597,10 +623,7 @@
         '<h3>' + esc(feat.title || "") + '</h3>' +
       '</div>';
     banner.style.display = "";
-    banner.onclick = () => {
-      document.querySelector('.tab[data-tab="news"]').click();
-      openNewsDetail(fFolder);
-    };
+    banner.onclick = () => { location.hash = "news/" + encodeURIComponent(postId(feat)); };
 
     newsPosts.forEach(post => {
       const folder = post.folder;
@@ -623,7 +646,7 @@
           '<p>' + esc(post.description || "") + '</p>' +
           '<span class="read-more">Read more &rsaquo;</span>' +
         '</div>';
-      art.addEventListener("click", () => openNewsDetail(folder));
+      art.addEventListener("click", () => { location.hash = "news/" + encodeURIComponent(postId(post)); });
       wrap.appendChild(art);
     });
   }
@@ -716,6 +739,7 @@
       const posts = await res.json();
       newsResolver = (folder, file) => "news/" + folder + "/" + file;
       renderNews(posts);
+      onHashChange();
     } catch (e) {
       document.getElementById("news-list").className = "loading";
       document.getElementById("news-list").textContent = "No news yet.";
@@ -765,3 +789,4 @@
 </script>
 </body>
 </html>
+
