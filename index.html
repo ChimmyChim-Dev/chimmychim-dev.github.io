@@ -212,6 +212,11 @@
   .slide img, .slide-media { width:100%; height:auto; aspect-ratio:16/10; object-fit:cover; display:block; background:#000; }
   .slide:hover { border-color:var(--mint); }
   .slide-badge { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--mint); font-size:22px; pointer-events:none; text-shadow:0 0 6px #000; }
+  .back-btn { background:none; border:1px solid var(--border); color:var(--mint); padding:8px 14px; margin-bottom:16px; cursor:pointer; font-weight:700; font-size:13px; letter-spacing:.4px; }
+  .back-btn:hover { border-color:var(--mint); background:var(--mint-dim); }
+  .news-post.preview { cursor:pointer; transition:border-color .15s, box-shadow .15s; }
+  .news-post.preview:hover { border-color:var(--mint); }
+  .read-more { display:inline-block; margin-top:8px; color:var(--mint); font-weight:700; font-size:13px; }
 
   /* ===== Lightbox ===== */
   .lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:100; padding:16px; }
@@ -344,7 +349,9 @@
        news/index.json. No HTML edits required.  -->
   <section class="panel active" id="news">
     <h2 class="section-title"><span class="bar"></span> News</h2>
+    <button class="back-btn" id="news-back" type="button" style="display:none">&lsaquo; Back to news</button>
     <div class="loading" id="news-list">Loading news…</div>
+    <div id="news-detail" style="display:none"></div>
   </section>
 
   <!-- ===== Games panel =====
@@ -487,12 +494,14 @@
   // ---- Tabs ----
   document.querySelectorAll(".tab").forEach(btn => {
     btn.addEventListener("click", () => {
+      if (btn.dataset.tab === "news") closeNewsDetail();
       document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
       document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById(btn.dataset.tab).classList.add("active");
     });
   });
+  document.getElementById("news-back").addEventListener("click", closeNewsDetail);
 
   // ---- Live Bluesky feed ----
   (async () => {
@@ -555,6 +564,8 @@
     return Math.abs(Date.now() - d.getTime()) <= 5 * 86400000;
   }
 
+  let newsPosts = [];
+
   function renderNews(posts) {
     const wrap = document.getElementById("news-list");
     const banner = document.getElementById("news-banner");
@@ -562,14 +573,15 @@
       wrap.className = "loading";
       wrap.textContent = "No news posts yet. Add one in the news/ folder (see news/index.json).";
       banner.style.display = "none";
+      newsPosts = [];
       return;
     }
+    newsPosts = posts.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
     wrap.className = "";
     wrap.innerHTML = "";
-    posts = posts.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // Featured banner (most recent post)
-    const feat = posts[0];
+    const feat = newsPosts[0];
     const fFolder = feat.folder;
     const fItem = feat.thumbnail || (feat.slides && feat.slides[0]) || "";
     const fType = fItem ? slideType(fItem) : "";
@@ -586,51 +598,77 @@
       '</div>';
     banner.style.display = "";
     banner.onclick = () => {
-      const t = document.querySelector('.tab[data-tab="news"]');
-      if (t) t.click();
+      document.querySelector('.tab[data-tab="news"]').click();
+      openNewsDetail(fFolder);
     };
 
-    posts.forEach(post => {
+    newsPosts.forEach(post => {
       const folder = post.folder;
-      const slides = (post.slides && post.slides.length) ? post.slides : (post.thumbnail ? [post.thumbnail] : []);
-      const thumbItem = post.thumbnail || slides[0] || "";
-      const thumbSrc = newsResolver(folder, slideSrc(thumbItem));
+      const thumbItem = post.thumbnail || (post.slides && post.slides[0]) || "";
+      const thumbSrc = thumbItem ? newsResolver(folder, slideSrc(thumbItem)) : "";
       const thumbIsVid = thumbItem && slideType(thumbItem) === "video";
       const newPost = isNew(post.date);
       const art = document.createElement("article");
-      art.className = "news-post" + (newPost ? " is-new" : "");
+      art.className = "news-post preview" + (newPost ? " is-new" : "");
       art.id = "post-" + folder.replace(/[^A-Za-z0-9]/g, "_");
-      const slidesHtml = slides.map((s, i) => {
-        const src = newsResolver(folder, slideSrc(s));
-        const isVid = slideType(s) === "video";
-        const poster = slidePoster(s) ? ' poster="' + newsResolver(folder, slidePoster(s)) + '"' : "";
-        const media = isVid
-          ? '<video class="slide-media" muted playsinline preload="metadata" src="' + src + '"' + poster + '></video>'
-          : '<img loading="lazy" src="' + src + '" alt="">';
-        const badge = isVid ? '<span class="slide-badge">&#9654;</span>' : "";
-        return '<button class="slide" type="button" data-folder="' + esc(folder) + '" data-i="' + i + '">' + media + badge + '</button>';
-      }).join("");
       const thumbMedia = thumbIsVid
         ? '<video class="news-thumb" muted playsinline preload="metadata" src="' + thumbSrc + '"></video>'
-        : '<img class="news-thumb" src="' + thumbSrc + '" alt="">';
+        : (thumbSrc ? '<img class="news-thumb" src="' + thumbSrc + '" alt="">' : "");
       art.innerHTML =
         (newPost ? '<span class="new-badge">NEW</span>' : "") +
-        (thumbItem ? thumbMedia : "") +
+        thumbMedia +
         '<div class="news-body">' +
           '<div class="date">' + esc(post.date || "") + '</div>' +
           '<h3>' + esc(post.title || "") + '</h3>' +
           '<p>' + esc(post.description || "") + '</p>' +
-          (slidesHtml ? '<div class="slides">' + slidesHtml + '</div>' : "") +
+          '<span class="read-more">Read more &rsaquo;</span>' +
         '</div>';
+      art.addEventListener("click", () => openNewsDetail(folder));
       wrap.appendChild(art);
     });
-    wrap.querySelectorAll(".slide").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const post = posts.find(p => p.folder === btn.dataset.folder);
-        const slides = (post.slides && post.slides.length) ? post.slides : (post.thumbnail ? [post.thumbnail] : []);
-        openLightbox(post, parseInt(btn.dataset.i, 10), slides);
-      });
+  }
+
+  function buildSlidesHtml(post, slides) {
+    return slides.map((s, i) => {
+      const src = newsResolver(post.folder, slideSrc(s));
+      const isVid = slideType(s) === "video";
+      const poster = slidePoster(s) ? ' poster="' + newsResolver(post.folder, slidePoster(s)) + '"' : "";
+      const media = isVid
+        ? '<video class="slide-media" muted playsinline preload="metadata" src="' + src + '"' + poster + '></video>'
+        : '<img loading="lazy" src="' + src + '" alt="">';
+      const badge = isVid ? '<span class="slide-badge">&#9654;</span>' : "";
+      return '<button class="slide" type="button" data-i="' + i + '">' + media + badge + '</button>';
+    }).join("");
+  }
+
+  function openNewsDetail(folder) {
+    const post = newsPosts.find(p => p.folder === folder);
+    if (!post) return;
+    const slides = (post.slides && post.slides.length) ? post.slides : (post.thumbnail ? [post.thumbnail] : []);
+    const detail = document.getElementById("news-detail");
+    const newPost = isNew(post.date);
+    detail.innerHTML =
+      (newPost ? '<span class="new-badge">NEW</span>' : "") +
+      '<div class="news-body">' +
+        '<div class="date">' + esc(post.date || "") + '</div>' +
+        '<h3>' + esc(post.title || "") + '</h3>' +
+        '<p>' + esc(post.description || "") + '</p>' +
+        (slides.length ? '<div class="slides">' + buildSlidesHtml(post, slides) + '</div>' : '') +
+      '</div>';
+    detail.querySelectorAll(".slide").forEach(btn => {
+      btn.addEventListener("click", () => openLightbox(post, parseInt(btn.dataset.i, 10), slides));
     });
+    document.getElementById("news-list").style.display = "none";
+    detail.style.display = "";
+    document.getElementById("news-back").style.display = "";
+  }
+
+  function closeNewsDetail() {
+    const d = document.getElementById("news-detail");
+    d.style.display = "none";
+    d.innerHTML = "";
+    document.getElementById("news-list").style.display = "";
+    document.getElementById("news-back").style.display = "none";
   }
 
   function openLightbox(post, i, slides) {
@@ -644,6 +682,8 @@
     const s = slides[i];
     const src = newsResolver(post.folder, slideSrc(s));
     const slot = document.getElementById("lb-media-slot");
+    const prevVid = slot.querySelector("video");
+    if (prevVid) { try { prevVid.pause(); } catch (e) {} }
     slot.innerHTML = "";
     if (slideType(s) === "video") {
       const v = document.createElement("video");
@@ -658,7 +698,14 @@
   }
   document.getElementById("lb-prev").addEventListener("click", () => { if (!lbState) return; lbState.i = (lbState.i - 1 + lbState.slides.length) % lbState.slides.length; showLightbox(); });
   document.getElementById("lb-next").addEventListener("click", () => { if (!lbState) return; lbState.i = (lbState.i + 1) % lbState.slides.length; showLightbox(); });
-  function closeLightbox() { document.getElementById("lightbox").classList.remove("open"); lbState = null; }
+  function closeLightbox() {
+    const slot = document.getElementById("lb-media-slot");
+    const v = slot.querySelector("video");
+    if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch (e) {} }
+    slot.innerHTML = "";
+    document.getElementById("lightbox").classList.remove("open");
+    lbState = null;
+  }
   document.getElementById("lb-close").addEventListener("click", closeLightbox);
   document.getElementById("lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") closeLightbox(); });
 
