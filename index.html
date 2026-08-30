@@ -787,6 +787,9 @@
 
   document.getElementById("stamp").textContent = new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 </script>
+
+<!-- Cloudflare Web Analytics (replace YOUR_TOKEN with the token from the Cloudflare dashboard) -->
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "YOUR_TOKEN"}'></script>
 </body>
 </html>
 
