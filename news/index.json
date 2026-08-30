@@ -1,5 +1,18 @@
 [
   {
+    "folder": "2026-08-29-SpaceGame-Devlog-1",
+    "date": "Aug 29, 2026",
+    "title": "SpaceGame Devlog 1 \u2014 Spaceship!",
+    "description": "I added gyroscopes and cockpits. Now you can fly your spaceship!",
+    "thumbnail": "thumb.png",
+    "slides": [
+      {
+        "type": "video",
+        "src": "SG1.mp4"
+      }
+    ]
+  },
+  {
     "folder": "2026-08-29-Welcome",
     "date": "Aug 29, 2026",
     "title": "Welcome \u2014 New Central Hub!",
