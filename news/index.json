@@ -3,7 +3,7 @@
     "folder": "2026-08-31-SpaceGame-Devlog-2",
     "date": "Aug 31, 2026",
     "title": "SpaceGame Devlog 2 \u2014 Added brakes! and also properties...",
-    "description": "One step closer to an actual fun game!",
+    "description": "One step closer to an actual fun game! Press space (The default key bind) to cause the spaceship to slow down.",
     "thumbnail": "brake_test_thumb.png",
     "slides": [
       {
