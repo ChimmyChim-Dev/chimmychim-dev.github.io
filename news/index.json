@@ -1,5 +1,19 @@
 [
   {
+    "folder": "2026-08-31-SpaceGame-Devlog-2",
+    "date": "Aug 31, 2026",
+    "title": "SpaceGame Devlog 2 \u2014 Added brakes! and also properties...",
+    "description": "One step closer to an actual fun game!",
+    "thumbnail": "brake_test_thumb.png",
+    "slides": [
+      {
+        "type": "video",
+        "src": "brake_test.mp4"
+      },
+      "properties.webp"
+    ]
+  },
+  {
     "folder": "2026-08-29-SpaceGame-Devlog-1",
     "date": "Aug 29, 2026",
     "title": "SpaceGame Devlog 1 \u2014 Spaceship!",
